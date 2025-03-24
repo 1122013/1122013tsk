@@ -42,9 +42,12 @@
         let platforms,
             player,
             cursors,
-            isFlipping
+            isFlipping,time
         let emmiter, particles; // 全域變數
         let sky = null;
+        let edgeTimer = 0;
+        let jumpTimer = 0;
+        let wasStanding = false;
         function preload() {
             // 練習先前學過的經驗，將background.png、platform.png、ice-platform.png、dude.png資料匯入
             this.load.image("background", "assets/background.png");
@@ -61,6 +64,7 @@
         }
 
         function create() {
+            this.physics.world.setBounds(0, 0, 640, 2000);
             // 繪製背景天空
             this.add.sprite(0, 0, "background").setOrigin(0);
             sky = this.add.tileSprite(
@@ -76,10 +80,11 @@
 
 
             player = this.physics.add
-                .sprite(320, 240, "dude")
+                .sprite(320, 1952, "dude")
                 .setCollideWorldBounds(true)
                 .setName("dude");
 
+            player.body.setSize(2, 32).setOffset(6, 16);
             // 建立dude動畫
             this.anims.create({
                 key: "left",
@@ -107,7 +112,7 @@
                 velocityX: 100,
             });
 
-
+            //平台
             let property = { x: 0, y: 64, type: "platform" };
             for (let i = 0; i < 19; i++) {
                 property.type = i % 2 === 1 ? "platform" : "ice-platform";
@@ -116,8 +121,12 @@
                     .setVelocityX(100)
                     .setOrigin(0, 0)
                     .setName("platform" + i);
-                    if(property.type==="platform")platform.body.setFriction(1);
+                if (property.type === "platform") platform.body.setFriction(1);
                 property.x += 200;
+
+                if (Math.random() > 0.5) {
+                    platform.body.velocity.x *= -1;
+                }
                 if (property.x >= 600) {
                     property.x = 0;
                 }
@@ -140,6 +149,9 @@
             emitter.startFollow(player, 0, player.displayHeight / 2);
 
             this.physics.add.collider(player, platforms, setFriction, null, this);
+
+            let camera = this.cameras.main;
+            camera.setBounds(0, 0, 640, 2000).startFollow(player, true, 0, 0.05, 0, 100);
 
         }
 
@@ -194,6 +206,15 @@
                 });
             }
 
+            let standing = player.body.blocked.down || player.body.touching.down;
+            if (!standing && wasStanding) {
+                edgeTimer = time + 250;
+            }
+            if ((standing || time <= edgeTimer) && cursors.up.isDown && time > jumpTimer) {
+                player.body.velocity.y = -500;
+                jumpTimer = time + 750;
+            }
+            wasStanding = standing;
             platforms.getChildren().forEach(function (platform) {
                 wrapPlatform(platform);
             });
